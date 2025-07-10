@@ -60,7 +60,10 @@ Retrieve comprehensive influencer data including demographics, statistics, and o
 
 **Parameters:**
 - `platform` (mandatory): `instagram`, `tiktok`, `youtube`, or `twitch`
-- `username` or `userId` or `_id` (one mandatory): Influencer's username or internal platform user ID or _id the internal influData ID e.g. received from discovery requests.
+- `username`, `userId`, or `_id` (one mandatory): Influencer identifier
+  - `username`: Platform username (e.g., "adidas", "@MrBeast")
+  - `userId`: Platform-specific user ID (see formats below)
+  - `_id`: Internal database ID (works across all platforms)
 - `includeAudienceReport` (optional): `true` to include full audience report (default: `false`)
 - `showDatalogAndScore` (optional): `true` to include profile scores and data logs (default: `false`)
 
@@ -69,6 +72,7 @@ Retrieve comprehensive influencer data including demographics, statistics, and o
 - **TikTok**: `secTikTokId` (string) - TikTok's secure user identifier
 - **YouTube**: `channelId` (string) - YouTube channel identifier
 - **Twitch**: `twitchId` (string) - Twitch user identifier
+- **Internal ID**: `_id` (string) - InfluData's internal database ID (platform-agnostic)
 
 **Examples:**
 ```http
@@ -79,6 +83,8 @@ GET https://app.infludata.com/api/externalAPI/getUserData?platform=tiktok&userId
 GET https://app.infludata.com/api/externalAPI/getUserData?platform=youtube&username=@MrBeast&showDatalogAndScore=true
 
 GET https://app.infludata.com/api/externalAPI/getUserData?platform=twitch&username=ninja
+
+GET https://app.infludata.com/api/externalAPI/getUserData?_id=507f1f77bcf86cd799439011&includeAudienceReport=true
 ```
 
 **Responses:**
@@ -129,13 +135,15 @@ Check if an influencer's data and audience report are ready for retrieval.
 
 **Parameters:**
 - `platform` (mandatory): `instagram`, `tiktok`, `youtube`, or `twitch`
-- `username` or `userId` (one mandatory): Influencer identifier
+- `username`, `userId`, or `_id` (one mandatory): Influencer identifier
 
 **Examples:**
 ```http
 GET https://app.infludata.com/api/externalAPI/checkDataStatus?platform=instagram&userId=248312442
 
 GET https://app.infludata.com/api/externalAPI/checkDataStatus?platform=tiktok&username=charlidamelio
+
+GET https://app.infludata.com/api/externalAPI/checkDataStatus?_id=507f1f77bcf86cd799439011
 ```
 
 **Responses:**
@@ -206,16 +214,17 @@ Search and discover influencers across all supported platforms using comprehensi
 
 **Parameters:**
 - `platform` (mandatory): `instagram`, `tiktok`, `youtube`, or `twitch`
-- `skipCount` (optional): Pagination offset, increments of 20 (default: 0)
-- Platform-specific search parameters (see detailed section below)
+- `skipCount` (optional): Pagination offset (increments of 20, default: 0)
+- `categories` (optional): Creator categories (comma-separated, see available categories below)
+- Additional platform-specific search parameters (see below)
 
 **Examples:**
 ```http
-GET https://app.infludata.com/api/externalAPI/discovery?platform=instagram&skipCount=0&country=Germany&followerMin=10000&keywords=fashion
+GET https://app.infludata.com/api/externalAPI/discovery?platform=instagram&skipCount=0&country=Germany&followerMin=10000
 
-GET https://app.infludata.com/api/externalAPI/discovery?platform=tiktok&country=United%20States&ageMin=18&ageMax=25&engagementMin=3
+GET https://app.infludata.com/api/externalAPI/discovery?platform=tiktok&categories=gaming,tech&followerMin=5000&country=United States
 
-GET https://app.infludata.com/api/externalAPI/discovery?platform=youtube&followerMin=100000&sorting=engagementMean&keywords=tech%20review
+GET https://app.infludata.com/api/externalAPI/discovery?platform=youtube&categories=fitness&keywords=workout&sorting=descFollowers
 ```
 
 **Responses:**
@@ -253,32 +262,18 @@ GET https://app.infludata.com/api/externalAPI/discovery?platform=youtube&followe
 
 ### Search Parameters by Platform
 
-#### Common Parameters (All Platforms)
-
-**Text Search:**
-- `keywords` - Search in bio/description text (supports multiple words)
-
-**Demographics:**
-- `country` - Filter by creator location (see full country list below)
-- `language` - Filter by content language (see language codes below)
-
-**Engagement & Growth:**
-- `engagementMin/engagementMax` - Engagement rate range (percentage 0-100)
-- `growthRate` - Monthly follower growth rate
-
-**Sorting Options:**
-- `sorting` - Available options:
-  - `relevance` - Relevance to keyword search (default when keywords provided)
-  - `username` - Alphabetical by username
-  - `profileScore` - By platform quality score
-  - `followers` - By follower/subscriber count
-  - `engagementMean` - By average engagement rate
-  - `growthRate` - By monthly growth rate
-  - `viewsPost` - By average views per post/video
-
-**Sorting Direction:**
-- Prefix with `asc` or `desc` (e.g., `ascFollowers`, `descEngagementMean`)
-- Default direction varies by metric (typically descending for counts, ascending for names)
+**Common Parameters (All Platforms):**
+- `keywords` (optional): Search terms in creator content, bio, username (comma-separated)
+- `categories` (optional): Creator categories (comma-separated, see Available Categories section)
+- `country` (optional): Creator location country (see Supported Countries section)
+- `city` (optional): Creator location city  
+- `language` (optional): Creator language (2-letter code, see Supported Languages section)
+- `gender` (optional): Creator gender (`m` for male, `w` for female)
+- `followerMin` (optional): Minimum follower count
+- `followerMax` (optional): Maximum follower count
+- `engagementRate` (optional): Minimum engagement rate (0-20, where 1 = 1%)
+- `growthRate` (optional): Minimum monthly growth rate percentage
+- `sorting` (optional): Sort order - `relevance`, `username`, `profileScore`, `followers`, `engagementMean`, `growthRate`
 
 #### Instagram Specific Parameters
 
@@ -386,6 +381,45 @@ GET https://app.infludata.com/api/externalAPI/getCitiesForCountry?country=United
 - **500**: Server error
 
 ---
+
+### **Available Categories**
+
+Use the `categories` parameter to filter creators by their content categories. Multiple categories can be specified using comma separation.
+
+**Supported Categories:**
+- `fashion` - Fashion & Style
+- `fitness` - Fitness & Wellness  
+- `beauty` - Beauty & Cosmetics
+- `sports` - Athletics & Sports
+- `food` - Food & Drink
+- `diet` - Healthy Nutrition & Diet
+- `veganism` - Veganism & Vegetarianism
+- `travel` - Travel & Adventure
+- `books` - Books & Literature
+- `interior` - Home & Interior Design
+- `comedy` - Comedy
+- `tech` - Technology & Gadgets
+- `art` - Art & Creativity
+- `lifestyle` - Lifestyle
+- `education` - Education & Learning
+- `family` - Parenting & Family
+- `media` - Entertainment & Media
+- `music` - Music
+- `lgbtq` - LGBTQ+
+- `gaming` - Gaming
+- `business` - Business & Finance
+- `automotive` - Automotive & Vehicles
+- `sustainability` - Sustainability & Environment
+- `animals` - Animals & Pets
+- `charity` - Charity & Activism
+- `politics` - Politics
+
+**Category Examples:**
+```http
+GET https://app.infludata.com/api/externalAPI/discovery?platform=instagram&categories=fitness,fashion&followerMin=50000
+
+GET https://app.infludata.com/api/externalAPI/discovery?platform=tiktok&categories=gaming&country=Germany&skipCount=20
+```
 
 ## Supported Countries
 
@@ -534,8 +568,8 @@ Australia, Fiji, Kiribati, Marshall Islands, Micronesia, Nauru, New Zealand, Pal
 **Parameter Errors:**
 - Missing mandatory platform parameter
 - Invalid platform value
-- Both username and userId provided simultaneously
-- Neither username nor userId provided
+- Multiple identifiers provided simultaneously
+- No identifier provided (username, userId, or _id required)
 - Invalid date ranges or numeric values
 
 **Resource Errors:**
@@ -562,6 +596,7 @@ Australia, Fiji, Kiribati, Marshall Islands, Micronesia, Nauru, New Zealand, Pal
 | **Gender Filtering** | ✅ | ✅ | ❌ | ❌ |
 | **Age Filtering** | ✅ | ✅ | ❌ | ❌ |
 | **Business Mode** | ✅ | ❌ | ❌ | ❌ |
+| **Internal ID Support** | ✅ | ✅ | ✅ | ✅ |
 
 ### Platform-Specific Notes
 
@@ -633,9 +668,9 @@ if (reportsLeft < 20) {
   console.log('Insufficient tokens for full audience report');
 }
 
-// 2. Check if user data is ready
+// 2. Check if user data is ready (using internal _id)
 const statusCheck = await fetch(
-  '/api/externalAPI/checkDataStatus?platform=instagram&username=example_user',
+  '/api/externalAPI/checkDataStatus?_id=507f1f77bcf86cd799439011',
   { headers: { 'Authorization': 'Bearer YOUR_TOKEN' } }
 );
 const { status } = await statusCheck.json();
@@ -643,7 +678,7 @@ const { status } = await statusCheck.json();
 // 3. Retrieve user data based on status
 if (status === 'READY') {
   const userData = await fetch(
-    '/api/externalAPI/getUserData?platform=instagram&username=example_user&includeAudienceReport=true',
+    '/api/externalAPI/getUserData?_id=507f1f77bcf86cd799439011&includeAudienceReport=true',
     { headers: { 'Authorization': 'Bearer YOUR_TOKEN' } }
   );
   const user = await userData.json();
@@ -651,7 +686,7 @@ if (status === 'READY') {
 } else if (status === 'NOT READY') {
   console.log('User found, audience analysis in progress');
 } else {
-  console.log('User not found, adding to enrichment queue');
+  console.log('User not found');
 }
 ```
 
@@ -710,6 +745,28 @@ async function searchAllPlatforms(keywords) {
   }
 
   return results;
+}
+```
+
+### Using Internal _id for Cross-platform Operations
+
+```javascript
+async function getInfluencerAcrossPlatforms(internalId) {
+  try {
+    // Get user data using internal _id (platform auto-detected)
+    const response = await fetch(
+      `/api/externalAPI/getUserData?_id=${internalId}&includeAudienceReport=false`,
+      { headers: { 'Authorization': 'Bearer YOUR_TOKEN' } }
+    );
+    
+    const user = await response.json();
+    console.log(`Found ${user.username} on ${user.platform}`);
+    
+    return user;
+  } catch (error) {
+    console.error('Error fetching user by internal ID:', error);
+    return null;
+  }
 }
 ```
 
@@ -816,9 +873,9 @@ For critical production issues or service outages:
 
 ---
 
-**Document Version**: 2.1  
+**Document Version**: 2.2  
 **Last Updated**: March 21st, 2025  
 **API Version**: v1  
 **Effective Date**: March 21st, 2025
 
-*This documentation is proprietary and confidential. Distribution is restricted to authorized API clients only.* 
+*This documentation is proprietary and confidential. Distribution is restricted to authorized API clients only.*
