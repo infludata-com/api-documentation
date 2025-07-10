@@ -60,7 +60,7 @@ Retrieve comprehensive influencer data including demographics, statistics, and o
 
 **Parameters:**
 - `platform` (mandatory): `instagram`, `tiktok`, `youtube`, or `twitch`
-- `username` or `userId` (one mandatory): Influencer's username or internal platform user ID
+- `username` or `userId` or `_id` (one mandatory): Influencer's username or internal platform user ID or _id the internal influData ID e.g. received from discovery requests.
 - `includeAudienceReport` (optional): `true` to include full audience report (default: `false`)
 - `showDatalogAndScore` (optional): `true` to include profile scores and data logs (default: `false`)
 
