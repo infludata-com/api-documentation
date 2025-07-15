@@ -131,33 +131,225 @@ GET https://app.infludata.com/api/externalAPI/getUserData?_id=507f1f77bcf86cd799
 GET https://app.infludata.com/api/externalAPI/checkDataStatus
 ```
 
-Check if an influencer's data and audience report are ready for retrieval.
+Get comprehensive metadata about an influencer without consuming tokens. This endpoint also automatically triggers data refresh and optionally adds the creator to weekly refresh schedules.
 
 **Parameters:**
 - `platform` (mandatory): `instagram`, `tiktok`, `youtube`, or `twitch`
 - `username`, `userId`, or `_id` (one mandatory): Influencer identifier
+- `addToWeeklyEnrichment` (optional): Set to `true` to add creator to weekly refresh schedule (default: `false`)
 
 **Examples:**
 ```http
 GET https://app.infludata.com/api/externalAPI/checkDataStatus?platform=instagram&userId=248312442
 
-GET https://app.infludata.com/api/externalAPI/checkDataStatus?platform=tiktok&username=charlidamelio
+GET https://app.infludata.com/api/externalAPI/checkDataStatus?platform=tiktok&username=charlidamelio&addToWeeklyEnrichment=true
 
 GET https://app.infludata.com/api/externalAPI/checkDataStatus?_id=507f1f77bcf86cd799439011
 ```
 
 **Responses:**
-- **200**: JSON object with status information
+- **200**: Comprehensive metadata object
   ```json
   {
-    "status": "READY" | "NOT READY" | "NOT FOUND" | "BAD REQUEST"
+    "isInDatabase": true,
+    "creatorId": "507f1f77bcf86cd799439011",
+    "username": "example_user",
+    "displayName": "Example User",
+    "platform": "instagram",
+    "followers": 125000,
+    "following": 500,
+    "posts": 250,
+    "isPrivate": false,
+    "lastRefreshDate": "2024-01-20T10:30:00Z",
+    "lastAudienceDataRefresh": "2024-01-19T08:00:00Z",
+    "hasAudienceData": true,
+    "firstTimelineDate": "2023-07-20T00:00:00Z",
+    "recentTimelineDate": "2024-01-20T00:00:00Z",
+    "timelineDatapoints": 180,
+    "profilePictureUrl": "https://...",
+    "isAddedToRefresh": false,
+    "isAddedToWeeklyRefresh": true
   }
   ```
-  - `READY`: Full data including audience analysis available
-  - `NOT READY`: Basic profile exists, audience analysis in progress
-  - `NOT FOUND`: User not found in our database
-  - `BAD REQUEST`: Invalid parameters provided
+
+**For creators not in database:**
+  ```json
+  {
+    "isInDatabase": false,
+    "isBeingProcessed": true,
+    "username": "new_creator",
+    "platform": "instagram",
+    "isAddedToRefresh": true,
+    "isAddedToWeeklyRefresh": false
+  }
+  ```
+
+**Response Fields:**
+- `isInDatabase`: Boolean indicating if creator exists in database
+- `creatorId`: Internal database ID (if exists)
+- `username`: Creator's username
+- `displayName`: Creator's display name (if exists)
+- `platform`: Platform name
+- `followers`: Number of followers (if exists)
+- `following`: Number following (if exists)
+- `posts`: Number of posts (if exists)
+- `isPrivate`: Boolean for private accounts
+- `lastRefreshDate`: Date of last data refresh (from Elasticsearch)
+- `lastAudienceDataRefresh`: Date of last audience analysis update (null if no audience data)
+- `hasAudienceData`: Boolean indicating if audience analysis exists
+- `firstTimelineDate`: Date of first timeline data point
+- `recentTimelineDate`: Date of most recent timeline data point
+- `timelineDatapoints`: Number of timeline data points available
+- `profilePictureUrl`: URL to profile picture
+- `isAddedToRefresh`: Boolean indicating if creator was just added to instant refresh queue
+- `isAddedToWeeklyRefresh`: Boolean indicating if creator was just added to weekly refresh list
+
+**Features:**
+- **No Token Consumption**: This endpoint does not consume any API tokens
+- **Automatic Instant Update**: Creator is always added to instant update queue
+- **Optional Weekly Refresh**: Creator can be added to weekly refresh schedule
+- **Comprehensive Metadata**: Detailed information about data availability and freshness
+
+**Error Responses:**
+- **400**: Invalid parameters or missing required fields
+- **401**: Unauthorized (invalid access token)
 - **500**: Server error
+
+---
+
+#### Bulk Add to Enrichment
+
+```
+POST https://app.infludata.com/api/externalAPI/bulkAddToEnrich
+```
+
+Add multiple creators to enrichment queues in a single request. Process up to 100 creators at once with automatic instant refresh and optional weekly refresh scheduling.
+
+**Request Body:**
+```json
+{
+  "accessToken": "YOUR_ACCESS_TOKEN",
+  "platform": "instagram",
+  "usernames": ["username1", "username2", "username3"],
+  "userIds": ["userId1", "userId2"],
+  "addAlsoToWeeklyEnrich": false
+}
+```
+
+**Parameters:**
+- `accessToken` (required): Your API access token (can be in query or body)
+- `platform` (required): Platform name (`instagram`, `tiktok`, `youtube`, `twitch`)
+- `usernames` (optional): Array of usernames to process
+- `userIds` (optional): Array of platform-specific user IDs to process
+- `addAlsoToWeeklyEnrich` (optional): Set to `true` to add creators to weekly refresh schedule (default: `false`)
+
+**Examples:**
+```http
+POST https://app.infludata.com/api/externalAPI/bulkAddToEnrich
+Content-Type: application/json
+
+{
+  "accessToken": "YOUR_TOKEN",
+  "platform": "instagram",
+  "usernames": ["cristiano", "leomessi", "neymarjr"],
+  "userIds": ["123456789", "987654321"]
+}
+```
+
+**With weekly refresh enabled:**
+```http
+POST https://app.infludata.com/api/externalAPI/bulkAddToEnrich
+Content-Type: application/json
+
+{
+  "accessToken": "YOUR_TOKEN",
+  "platform": "tiktok",
+  "usernames": ["charlidamelio", "addisonre"],
+  "addAlsoToWeeklyEnrich": true
+}
+```
+
+**Response Format:**
+```json
+{
+  "processed": [
+    {
+      "identifier": "cristiano",
+      "type": "username",
+      "isNewUser": false,
+      "creatorId": "507f1f77bcf86cd799439011",
+      "addedToInstant": true,
+      "addedToWeekly": true
+    },
+    {
+      "identifier": "123456789",
+      "type": "userId",
+      "username": "leomessi",
+      "creatorId": "507f1f77bcf86cd799439012",
+      "addedToInstant": false,
+      "addedToWeekly": false
+    }
+  ],
+  "failed": [
+    {
+      "identifier": "invaliduser",
+      "type": "username",
+      "error": "Invalid username format"
+    }
+  ],
+  "summary": {
+    "total": 10,
+    "existingInDatabase": 8,
+    "newlyAdded": 1,
+    "addedToInstant": 9,
+    "addedToWeekly": 8,
+    "failed": 1
+  }
+}
+```
+
+**Response Fields:**
+
+*Processed Array:*
+- `identifier`: The username or userId that was processed
+- `type`: Either "username" or "userId"
+- `isNewUser`: Boolean indicating if this was a new creator (only for usernames)
+- `creatorId`: Internal database ID (if creator exists in database)
+- `username`: Creator's username (for userId requests)
+- `addedToInstant`: Boolean indicating if added to instant refresh queue
+- `addedToWeekly`: Boolean indicating if added to weekly refresh schedule
+
+*Failed Array:*
+- `identifier`: The username or userId that failed
+- `type`: Either "username" or "userId"
+- `error`: Description of the failure reason
+
+*Summary Object:*
+- `total`: Total number of creators processed
+- `existingInDatabase`: Number of creators already in database
+- `newlyAdded`: Number of new creators queued for enrichment
+- `addedToInstant`: Number of creators added to instant refresh queue
+- `addedToWeekly`: Number of creators added to weekly refresh schedule
+- `failed`: Number of creators that failed processing
+
+**Features:**
+- **No Token Consumption**: This endpoint does not consume any API tokens
+- **Bulk Processing**: Process up to 100 creators in a single request
+- **Mixed Input Types**: Accept both usernames and userIds in the same request
+- **Automatic Instant Refresh**: All valid creators are added to instant update queue
+- **Optional Weekly Refresh**: Controlled by `addAlsoToWeeklyEnrich` parameter
+- **Detailed Error Reporting**: Clear feedback on which creators succeeded or failed
+- **Duplicate Prevention**: Won't re-add creators already in enrichment queues
+
+**Error Responses:**
+- **400**: Invalid parameters, empty arrays, or exceeding 100 item limit
+- **401**: Unauthorized (invalid access token)
+- **500**: Server error
+
+**Limitations:**
+- Maximum 100 items per request (combined usernames + userIds)
+- Weekly refresh only applies to creators already in the database
+- New creators must be enriched before they can be added to weekly refresh
 
 ---
 
@@ -625,33 +817,45 @@ Australia, Fiji, Kiribati, Marshall Islands, Micronesia, Nauru, New Zealand, Pal
 
 ### Token Management
 1. **Monitor token consumption** regularly via `/getClientInfo`
-2. **Use `includeAudienceReport=false`** for basic profile data to save tokens
-3. **Cache results** appropriately to minimize redundant API calls
+2. **Use metadata-first approach** with `/checkDataStatus` before consuming tokens
+3. **Check data readiness** to avoid spending tokens on incomplete audience reports
 4. **Implement token threshold alerts** in your application
+5. **Cache metadata results** to reduce unnecessary API calls
 
 ### Data Retrieval Workflow
-1. **Check data status** before requesting expensive audience reports
-2. **Handle 201/202 responses** gracefully for new user enrichment
-3. **Implement retry logic** for 202 responses (audience analysis pending)
-4. **Use pagination** effectively for discovery searches
+1. **Start with metadata checks** using `/checkDataStatus` to understand data availability
+2. **Use bulk operations** when processing multiple creators with `/bulkAddToEnrich`
+3. **Implement retry logic** for creators pending enrichment
+4. **Leverage automatic refresh** by enabling weekly updates for important creators
+5. **Handle different data states** gracefully (new, pending, ready)
 
 ### Performance Optimization
-1. **Batch similar requests** when possible
-2. **Use appropriate filtering** to reduce result set size
-3. **Implement client-side caching** for frequently accessed profiles
-4. **Consider time zones** for optimal API response times
+1. **Batch creator processing** using the bulk enrichment endpoint
+2. **Enable weekly refresh** for frequently accessed creators
+3. **Use appropriate filtering** in discovery searches to reduce result set size
+4. **Implement client-side caching** with metadata-driven cache invalidation
+5. **Consider time zones** for optimal API response times
+
+### Enrichment Strategy
+1. **Use bulk enrichment** for onboarding new creator lists
+2. **Enable weekly refresh** for creators in active campaigns
+3. **Monitor enrichment status** through metadata responses
+4. **Plan for enrichment delays** (24-48 hours for new creators)
+5. **Combine instant and weekly refresh** based on use case priority
 
 ### Error Handling
 1. **Implement exponential backoff** for temporary failures
-2. **Log error details** for debugging and monitoring
-3. **Provide user-friendly error messages** in your application
-4. **Handle platform-specific limitations** gracefully
+2. **Handle enrichment states** appropriately (new vs. pending vs. ready)
+3. **Process bulk operation results** carefully, handling partial successes
+4. **Log detailed metadata** for debugging and monitoring
+5. **Provide user-friendly status updates** based on enrichment progress
 
 ### Security Considerations
 1. **Never expose API tokens** in client-side code
 2. **Use HTTPS** for all API communications
 3. **Implement proper token rotation** policies
 4. **Monitor for unusual usage patterns**
+5. **Validate bulk operation inputs** to prevent abuse
 
 ## Examples
 
@@ -668,26 +872,129 @@ if (reportsLeft < 20) {
   console.log('Insufficient tokens for full audience report');
 }
 
-// 2. Check if user data is ready (using internal _id)
-const statusCheck = await fetch(
-  '/api/externalAPI/checkDataStatus?_id=507f1f77bcf86cd799439011',
+// 2. Check creator metadata and trigger refresh (no tokens consumed)
+const metadataCheck = await fetch(
+  '/api/externalAPI/checkDataStatus?platform=instagram&username=cristiano&addToWeeklyEnrichment=true',
   { headers: { 'Authorization': 'Bearer YOUR_TOKEN' } }
 );
-const { status } = await statusCheck.json();
+const metadata = await metadataCheck.json();
 
-// 3. Retrieve user data based on status
-if (status === 'READY') {
+console.log('Creator metadata:', {
+  inDatabase: metadata.isInDatabase,
+  hasAudienceData: metadata.hasAudienceData,
+  lastRefresh: metadata.lastRefreshDate,
+  timelinePoints: metadata.timelineDatapoints
+});
+
+// 3. Retrieve full user data if ready and needed
+if (metadata.isInDatabase && metadata.hasAudienceData) {
   const userData = await fetch(
-    '/api/externalAPI/getUserData?_id=507f1f77bcf86cd799439011&includeAudienceReport=true',
+    `/api/externalAPI/getUserData?platform=instagram&username=cristiano&includeAudienceReport=true`,
     { headers: { 'Authorization': 'Bearer YOUR_TOKEN' } }
   );
   const user = await userData.json();
-  console.log('Full user data:', user);
-} else if (status === 'NOT READY') {
-  console.log('User found, audience analysis in progress');
+  console.log('Full user data retrieved');
+} else if (metadata.isInDatabase) {
+  console.log('Creator found, but audience data pending - check back later');
 } else {
-  console.log('User not found');
+  console.log('Creator queued for enrichment - will be available within 24-48 hours');
 }
+```
+
+### Bulk Operations Example
+
+```javascript
+// Bulk add multiple creators to enrichment queues
+async function bulkEnrichCreators(platform, creatorList) {
+  const response = await fetch('/api/externalAPI/bulkAddToEnrich', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer YOUR_TOKEN',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      platform: platform,
+      usernames: creatorList.usernames,
+      userIds: creatorList.userIds,
+      addAlsoToWeeklyEnrich: true
+    })
+  });
+
+  const results = await response.json();
+  
+  console.log(`Processed ${results.summary.total} creators:`);
+  console.log(`- ${results.summary.existingInDatabase} already in database`);
+  console.log(`- ${results.summary.newlyAdded} newly added for enrichment`);
+  console.log(`- ${results.summary.addedToInstant} added to instant refresh`);
+  console.log(`- ${results.summary.addedToWeekly} added to weekly refresh`);
+  console.log(`- ${results.summary.failed} failed`);
+
+  // Handle failed items
+  if (results.failed.length > 0) {
+    console.log('Failed items:', results.failed);
+  }
+
+  return results;
+}
+
+// Usage
+const creators = {
+  usernames: ['cristiano', 'leomessi', 'neymarjr'],
+  userIds: ['123456789', '987654321']
+};
+
+const bulkResults = await bulkEnrichCreators('instagram', creators);
+```
+
+### Metadata-First Approach Example
+
+```javascript
+// Check multiple creators' metadata before deciding to use tokens
+async function analyzeCreatorReadiness(creatorList) {
+  const readyCreators = [];
+  const pendingCreators = [];
+  
+  for (const creator of creatorList) {
+    const response = await fetch(
+      `/api/externalAPI/checkDataStatus?platform=${creator.platform}&username=${creator.username}`,
+      { headers: { 'Authorization': 'Bearer YOUR_TOKEN' } }
+    );
+    
+    const metadata = await response.json();
+    
+    if (metadata.isInDatabase && metadata.hasAudienceData) {
+      readyCreators.push({
+        ...creator,
+        metadata,
+        readyForFullData: true
+      });
+    } else if (metadata.isInDatabase) {
+      pendingCreators.push({
+        ...creator,
+        metadata,
+        needsAudienceAnalysis: true
+      });
+    } else {
+      pendingCreators.push({
+        ...creator,
+        metadata,
+        needsEnrichment: true
+      });
+    }
+  }
+  
+  console.log(`${readyCreators.length} creators ready for full data retrieval`);
+  console.log(`${pendingCreators.length} creators pending enrichment`);
+  
+  return { readyCreators, pendingCreators };
+}
+
+// Only retrieve full data for ready creators to optimize token usage
+const analysis = await analyzeCreatorReadiness([
+  { platform: 'instagram', username: 'cristiano' },
+  { platform: 'tiktok', username: 'charlidamelio' },
+  { platform: 'youtube', username: 'mrbeast' }
+]);
 ```
 
 ### Discovery Search with Pagination
@@ -830,7 +1137,8 @@ async function safeApiCall(url, options = {}) {
 |----------|------------|---------------------|--------|
 | `/getUserData` | 1 token | 20 tokens | Depends on `includeAudienceReport` |
 | `/discovery` | 1 token | 1 token | Per search (20 results) |
-| `/checkDataStatus` | 0 tokens | 0 tokens | Free utility endpoint |
+| `/checkDataStatus` | 0 tokens | 0 tokens | Free utility endpoint with comprehensive metadata |
+| `/bulkAddToEnrich` | 0 tokens | 0 tokens | Free bulk enrichment endpoint |
 | `/getClientInfo` | 0 tokens | 0 tokens | Free utility endpoint |
 | `/getCitiesForCountry` | 0 tokens | 0 tokens | Free utility endpoint |
 
