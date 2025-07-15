@@ -166,7 +166,6 @@ GET https://app.infludata.com/api/externalAPI/checkDataStatus?_id=507f1f77bcf86c
     "firstTimelineDate": "2023-07-20T00:00:00Z",
     "recentTimelineDate": "2024-01-20T00:00:00Z",
     "timelineDatapoints": 180,
-    "profilePictureUrl": "https://...",
     "isAddedToRefresh": false,
     "isAddedToWeeklyRefresh": true
   }
@@ -200,7 +199,6 @@ GET https://app.infludata.com/api/externalAPI/checkDataStatus?_id=507f1f77bcf86c
 - `firstTimelineDate`: Date of first timeline data point
 - `recentTimelineDate`: Date of most recent timeline data point
 - `timelineDatapoints`: Number of timeline data points available
-- `profilePictureUrl`: URL to profile picture
 - `isAddedToRefresh`: Boolean indicating if creator was just added to instant refresh queue
 - `isAddedToWeeklyRefresh`: Boolean indicating if creator was just added to weekly refresh list
 
@@ -232,7 +230,7 @@ Add multiple creators to enrichment queues in a single request. Process up to 10
   "platform": "instagram",
   "usernames": ["username1", "username2", "username3"],
   "userIds": ["userId1", "userId2"],
-  "addAlsoToWeeklyEnrich": false
+  "addToWeeklyEnrichment": false
 }
 ```
 
@@ -241,7 +239,7 @@ Add multiple creators to enrichment queues in a single request. Process up to 10
 - `platform` (required): Platform name (`instagram`, `tiktok`, `youtube`, `twitch`)
 - `usernames` (optional): Array of usernames to process
 - `userIds` (optional): Array of platform-specific user IDs to process
-- `addAlsoToWeeklyEnrich` (optional): Set to `true` to add creators to weekly refresh schedule (default: `false`)
+- `addToWeeklyEnrichment` (optional): Set to `true` to add creators to weekly refresh schedule (default: `false`)
 
 **Examples:**
 ```http
@@ -265,7 +263,7 @@ Content-Type: application/json
   "accessToken": "YOUR_TOKEN",
   "platform": "tiktok",
   "usernames": ["charlidamelio", "addisonre"],
-  "addAlsoToWeeklyEnrich": true
+  "addToWeeklyEnrichment": true
 }
 ```
 
@@ -337,7 +335,7 @@ Content-Type: application/json
 - **Bulk Processing**: Process up to 100 creators in a single request
 - **Mixed Input Types**: Accept both usernames and userIds in the same request
 - **Automatic Instant Refresh**: All valid creators are added to instant update queue
-- **Optional Weekly Refresh**: Controlled by `addAlsoToWeeklyEnrich` parameter
+- **Optional Weekly Refresh**: Controlled by `addToWeeklyEnrichment` parameter
 - **Detailed Error Reporting**: Clear feedback on which creators succeeded or failed
 - **Duplicate Prevention**: Won't re-add creators already in enrichment queues
 
@@ -916,7 +914,7 @@ async function bulkEnrichCreators(platform, creatorList) {
       platform: platform,
       usernames: creatorList.usernames,
       userIds: creatorList.userIds,
-      addAlsoToWeeklyEnrich: true
+      addToWeeklyEnrichment: true
     })
   });
 
