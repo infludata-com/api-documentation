@@ -558,7 +558,11 @@ Retrieve content pieces from the Elasticsearch index with powerful filtering cap
 - `user_country` (optional): Audience country filter
 - `sorting` (optional): Sort order: `viral`, `uploaded`, or default by reach
 - `contentType` (optional): Type of content to filter
-- `platform` (optional): Social media platform
+  - Instagram: `post`, `reel`, `story`
+  - TikTok: `video`
+  - YouTube: `video`, `short`
+  - Twitch: `video`
+- `platform` (optional): Social media platform: `instagram`, `tiktok`, `youtube`, `twitch`
 
 **Examples:**
 ```http
