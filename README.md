@@ -557,8 +557,8 @@ Retrieve content pieces from the Elasticsearch index with powerful filtering cap
 - `language` (optional): Content language (2-letter code)
 - `user_country` (optional): Audience country filter
 - `sorting` (optional): Sort order: `viral`, `uploaded`, or default by reach
-- `contentType` (optional): Type of content to filter
-  - Instagram: `post`, `reel`, `story`
+- `contentTypes` (optional): Comma-separated content types to filter
+  - Instagram: `post`, `reel`, `story` (e.g., `contentTypes=post,reel`)
   - TikTok: `video`
   - YouTube: `video`, `short`
   - Twitch: `video`
@@ -570,7 +570,7 @@ GET https://app.infludata.com/api/externalAPI/getContent?limit=10&keywords=fashi
 
 GET https://app.infludata.com/api/externalAPI/getContent?limit=100&uploadedFrom=2024-01-01&country=Germany&sorting=viral
 
-GET https://app.infludata.com/api/externalAPI/getContent?offset=50&limit=50&viewsMin=100000&platform=instagram
+GET https://app.infludata.com/api/externalAPI/getContent?offset=50&limit=50&viewsMin=100000&platform=instagram&contentTypes=post,reel
 ```
 
 **Token Consumption:**
