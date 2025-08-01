@@ -2,6 +2,14 @@
 
 **Updated: March 21st, 2025**
 
+## 🆕 Recent Updates
+
+**March 2025 - Enhanced Keyword Search Features:**
+- **Targeted Field Searching**: New `keywordFields` parameter allows you to specify which profile fields to search (bio, hashtags, content, website)
+- **Bi-gram Phrase Matching**: Keywords with spaces are now treated as exact phrases for more accurate matching
+- **Website Content Search**: Search within creator websites and external links (Instagram, TikTok, YouTube)
+- **Improved Relevance**: More precise search results with targeted field selection
+
 ## Table of Contents
 
 1. [Authentication](#authentication)
@@ -417,6 +425,20 @@ GET https://app.infludata.com/api/externalAPI/discovery?platform=instagram&skipC
 GET https://app.infludata.com/api/externalAPI/discovery?platform=tiktok&categories=gaming,tech&followerMin=5000&country=United States
 
 GET https://app.infludata.com/api/externalAPI/discovery?platform=youtube&categories=fitness&keywords=workout&sorting=descFollowers
+
+# NEW: Targeted keyword searching
+GET https://app.infludata.com/api/externalAPI/discovery?platform=instagram&keywords=dog,pet&keywordFields=bio&followerMin=10000
+
+GET https://app.infludata.com/api/externalAPI/discovery?platform=tiktok&keywords=fitness&keywordFields=bio,content&country=Germany
+
+GET https://app.infludata.com/api/externalAPI/discovery?platform=instagram&keywords=shopify&keywordFields=website&followerMin=5000
+
+# NEW: Bi-gram phrase matching examples
+GET https://app.infludata.com/api/externalAPI/discovery?platform=instagram&keywords=personal trainer,fitness coach&keywordFields=bio&followerMin=1000
+
+GET https://app.infludata.com/api/externalAPI/discovery?platform=youtube&keywords=weight loss,healthy eating&keywordFields=content&country=United States
+
+GET https://app.infludata.com/api/externalAPI/discovery?platform=tiktok&keywords=dog lover,pet care,animal rescue&keywordFields=bio,content
 ```
 
 **Responses:**
@@ -455,7 +477,16 @@ GET https://app.infludata.com/api/externalAPI/discovery?platform=youtube&categor
 ### Search Parameters by Platform
 
 **Common Parameters (All Platforms):**
-- `keywords` (optional): Search terms in creator content, bio, username (comma-separated)
+- `keywords` (optional): Search terms in creator content, bio, username (comma-separated). **NEW**: Now supports bi-gram phrase matching - keywords with spaces are treated as exact phrases for better accuracy
+  - Single words: `keywords=fitness,yoga` searches for "fitness" OR "yoga"
+  - Phrases: `keywords=personal trainer,weight loss` searches for exact phrases "personal trainer" OR "weight loss"
+  - Mixed: `keywords=fitness,personal trainer,yoga` combines single words and phrases
+- `keywordFields` (optional): **NEW** Specify which profile fields to search for keywords - allows targeted keyword searching (comma-separated). Default: searches all fields
+  - `bio` - Search in profile descriptions/bios
+  - `hashtags` - Search in hashtags used by creators  
+  - `content` - Search in post captions and content
+  - `website` - Search in websites and external links (Instagram, TikTok, YouTube only)
+  - Example: `keywordFields=bio,content` searches only in bios and post content
 - `categories` (optional): Creator categories (comma-separated, see Available Categories section)
 - `country` (optional): Creator location country (see Supported Countries section)
 - `city` (optional): Creator location city  
@@ -1169,24 +1200,90 @@ async function searchInfluencers(query, platform) {
   return allResults;
 }
 
-// Usage
+// Usage examples
 const fashionInfluencers = await searchInfluencers(
   'keywords=fashion&country=Germany&followerMin=10000&engagementMin=3',
   'instagram'
 );
+
+// NEW: Using targeted field searching
+const dogLoversBios = await searchInfluencers(
+  'keywords=dog lover,pet owner&keywordFields=bio&followerMin=5000',
+  'instagram'
+);
+
+// NEW: Using bi-gram phrase matching
+const fitnessTrainers = await searchInfluencers(
+  'keywords=personal trainer,fitness coach&keywordFields=bio,content&country=United States',
+  'instagram'
+);
+```
+
+### NEW: Advanced Keyword Search Examples
+
+```javascript
+// Example 1: Find fitness trainers using targeted bio search
+async function findFitnessTrainers() {
+  const response = await fetch(
+    '/api/externalAPI/discovery?platform=instagram&keywords=personal trainer,fitness coach,certified trainer&keywordFields=bio&followerMin=1000&country=United States',
+    { headers: { 'Authorization': 'Bearer YOUR_TOKEN' } }
+  );
+  return await response.json();
+}
+
+// Example 2: Search for creators posting about specific topics
+async function findContentCreators() {
+  const response = await fetch(
+    '/api/externalAPI/discovery?platform=tiktok&keywords=healthy recipes,meal prep&keywordFields=content&followerMin=5000',
+    { headers: { 'Authorization': 'Bearer YOUR_TOKEN' } }
+  );
+  return await response.json();
+}
+
+// Example 3: Find creators with e-commerce websites
+async function findEcommerceCreators() {
+  const response = await fetch(
+    '/api/externalAPI/discovery?platform=instagram&keywords=shop,store,shopify,etsy&keywordFields=website&followerMin=10000',
+    { headers: { 'Authorization': 'Bearer YOUR_TOKEN' } }
+  );
+  return await response.json();
+}
+
+// Example 4: Combined search across bio and content
+async function findPetInfluencers() {
+  const response = await fetch(
+    '/api/externalAPI/discovery?platform=instagram&keywords=dog lover,pet care,animal rescue&keywordFields=bio,content&followerMin=2000&country=Germany',
+    { headers: { 'Authorization': 'Bearer YOUR_TOKEN' } }
+  );
+  return await response.json();
+}
+
+// Example 5: Hashtag-specific search
+async function findHashtagUsers() {
+  const response = await fetch(
+    '/api/externalAPI/discovery?platform=instagram&keywords=veganfood,plantbased&keywordFields=hashtags&followerMin=1000',
+    { headers: { 'Authorization': 'Bearer YOUR_TOKEN' } }
+  );
+  return await response.json();
+}
 ```
 
 ### Multi-platform Search
 
 ```javascript
-async function searchAllPlatforms(keywords) {
+async function searchAllPlatforms(keywords, keywordFields = 'bio,content') {
   const platforms = ['instagram', 'tiktok', 'youtube', 'twitch'];
   const results = {};
 
   for (const platform of platforms) {
     try {
+      // Skip website field for Twitch (not supported)
+      const fields = platform === 'twitch' 
+        ? keywordFields.replace(',website', '').replace('website,', '').replace('website', '')
+        : keywordFields;
+        
       const response = await fetch(
-        `/api/externalAPI/discovery?platform=${platform}&keywords=${keywords}&followerMin=1000`,
+        `/api/externalAPI/discovery?platform=${platform}&keywords=${keywords}&keywordFields=${fields}&followerMin=1000`,
         { headers: { 'Authorization': 'Bearer YOUR_TOKEN' } }
       );
       
@@ -1200,6 +1297,10 @@ async function searchAllPlatforms(keywords) {
 
   return results;
 }
+
+// NEW: Usage with targeted searching
+const dogInfluencers = await searchAllPlatforms('dog lover,pet care', 'bio,content');
+const fitnessCreators = await searchAllPlatforms('personal trainer,fitness coach', 'bio');
 ```
 
 ### Using Internal _id for Cross-platform Operations
@@ -1331,7 +1432,7 @@ For critical production issues or service outages:
 ---
 
 **Document Version**: 2.2  
-**Last Updated**: March 21st, 2025  
+**Last Updated**: August 1st, 2025  
 **API Version**: v1  
 **Effective Date**: March 21st, 2025
 
