@@ -1,10 +1,10 @@
 # InfluData API Documentation
 
-**Updated: March 21st, 2025**
+**Updated: August 1st, 2025**
 
 ## 🆕 Recent Updates
 
-**March 2025 - Enhanced Keyword Search Features:**
+**August 2025 - Enhanced Keyword Search Features:**
 - **Targeted Field Searching**: New `keywordFields` parameter allows you to specify which profile fields to search (bio, hashtags, content, website)
 - **Bi-gram Phrase Matching**: Keywords with spaces are now treated as exact phrases for more accurate matching
 - **Website Content Search**: Search within creator websites and external links (Instagram, TikTok, YouTube)
