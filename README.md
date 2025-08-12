@@ -1,10 +1,17 @@
 # InfluData API Documentation
 
-**Updated: August 1st, 2025**
+**Updated: August 12th, 2025**
 
 ## 🆕 Recent Updates
 
-**August 2025 - Enhanced Keyword Search Features:**
+**January 2025 - Cursor-Based Pagination for Content Discovery:**
+- **Efficient Large-Scale Data Retrieval**: New cursor-based pagination using Elasticsearch Point-in-Time (PIT) for consistent snapshots
+- **No Duplicates**: Stable sorting with search_after ensures no duplicate results during pagination
+- **Watermark Support**: Track incremental syncs with created_at_max and last_id for efficient delta updates
+- **Gzip Compression**: Automatic response compression for faster data transfers
+- **Backward Compatible**: Legacy offset/skipCount parameters still supported
+
+**March 2025 - Enhanced Keyword Search Features:**
 - **Targeted Field Searching**: New `keywordFields` parameter allows you to specify which profile fields to search (bio, hashtags, content, website)
 - **Bi-gram Phrase Matching**: Keywords with spaces are now treated as exact phrases for more accurate matching
 - **Website Content Search**: Search within creator websites and external links (Instagram, TikTok, YouTube)
@@ -569,33 +576,59 @@ GET https://app.infludata.com/api/externalAPI/discovery?platform=tiktok&keywords
 GET https://app.infludata.com/api/externalAPI/getContent
 ```
 
-Retrieve content pieces from the Elasticsearch index with powerful filtering capabilities. Access to all content across platforms with detailed metrics and engagement data.
+Retrieve content pieces from the Elasticsearch index with powerful filtering capabilities. Access to all content across platforms with detailed metrics and engagement data. Now supports cursor-based pagination for efficient large-scale data retrieval.
 
-**Parameters:**
+**Pagination Parameters (Recommended):**
+- `cursor` (optional): Opaque cursor string from previous response for pagination continuation
+- `limit` (optional): Number of content pieces to return per page (default: 1000, max: 1000)
+
+**Filter Parameters:**
 - `accessToken` (required): Your API access token
-- `limit` (optional): Number of content pieces to return (default: 1, max: 1000)
-- `offset` (optional): Number of results to skip for pagination (default: 0)
+- `platform` (optional): Social media platform: `instagram`, `tiktok`, `youtube`, `twitch` (default: `instagram,tiktok`)
 - `keywords` (optional): Comma-separated keywords to search in captions, hashtags, mentions
-- `followerMin` (optional): Minimum follower count for the content creator
+- `followerMin` or `min_followers` (optional): Minimum follower count for the content creator (default: 10000)
 - `followerMax` (optional): Maximum follower count for the content creator
 - `viewsMin` (optional): Minimum views/reach for content
 - `viewsMax` (optional): Maximum views/reach for content
-- `uploadedFrom` (optional): Start date for content upload (ISO format)
-- `uploadedTo` (optional): End date for content upload (ISO format)
-- `country` (optional): Creator's country
-- `city` (optional): Creator's city
-- `gender` (optional): Creator's gender (`m` for male, `f` for female)
-- `language` (optional): Content language (2-letter code)
-- `user_country` (optional): Audience country filter
-- `sorting` (optional): Sort order: `viral`, `uploaded`, or default by reach
+- `tags` (optional): Comma-separated tags to filter content (e.g., `fashion,style,outfit`)
+- `uploadedFrom` or `created_at_gte` (optional): Start date for content upload (ISO format)
+- `uploadedTo` or `created_at_lte` (optional): End date for content upload (ISO format)
 - `contentTypes` (optional): Comma-separated content types to filter
   - Instagram: `post`, `reel`, `story` (e.g., `contentTypes=post,reel`)
   - TikTok: `video`
   - YouTube: `video`, `short`
   - Twitch: `video`
-- `platform` (optional): Social media platform: `instagram`, `tiktok`, `youtube`, `twitch`
+- `country` (optional): Creator's country
+- `city` (optional): Creator's city
+- `gender` (optional): Creator's gender (`m` for male, `f` for female)
+- `language` (optional): Content language (2-letter code)
+- `user_country` (optional): Audience country filter
+- `sorting` (optional): Sort order: `viral`, `uploaded` (default), or `reach`
+
+**Legacy Pagination Parameters (Backward Compatibility):**
+- `offset` (optional): Number of results to skip for pagination (default: 0)
+- `skipCount` (optional): Alternative to offset
+
+**Note:** All filter parameters work with both cursor-based and offset-based pagination.
 
 **Examples:**
+
+*Cursor-Based Pagination (Recommended):*
+```http
+# Initial request - fashion content from high-follower accounts
+GET https://app.infludata.com/api/externalAPI/getContent?platform=instagram,tiktok&min_followers=10000&tags=fashion,style&limit=1000
+
+# Continue with cursor from previous response
+GET https://app.infludata.com/api/externalAPI/getContent?cursor=eyJwaXRJZCI6IkZHbHVZ...&limit=1000
+
+# Incremental sync - new content since last pull
+GET https://app.infludata.com/api/externalAPI/getContent?platform=instagram,tiktok&created_at_gte=2025-01-15T10:30:00Z&sorting=uploaded
+
+# With gzip compression for faster transfers
+curl -H "Accept-Encoding: gzip" "https://app.infludata.com/api/externalAPI/getContent?cursor=eyJwaXRJZCI6..."
+```
+
+*Legacy Pagination (Backward Compatible):*
 ```http
 GET https://app.infludata.com/api/externalAPI/getContent?limit=10&keywords=fashion,style&followerMin=10000
 
@@ -610,9 +643,11 @@ GET https://app.infludata.com/api/externalAPI/getContent?offset=50&limit=50&view
 - Token deduction occurs only for successfully returned content
 
 **Response Format:**
+
+*Cursor-Based Response (New):*
 ```json
 {
-  "content": [
+  "items": [
     {
       "_id": "65abc123def456789",
       "_index": "contentdata_v0.2",
@@ -645,25 +680,26 @@ GET https://app.infludata.com/api/externalAPI/getContent?offset=50&limit=50&view
       "mentions": ["@brandname", "@photographer"],
       "keywords": "<b>fashion</b> <b>style</b> outfit berlin streetstyle",
       "isSponsored": false,
-      "brandMentions": ["brandname"],
-      "audienceGender": {
-        "male": 23.5,
-        "female": 76.5
-      },
-      "audienceAge": {
-        "13-17": 5.2,
-        "18-24": 42.3,
-        "25-34": 31.8,
-        "35-44": 15.2,
-        "45+": 5.5
-      },
-      "audienceCountries": {
-        "DE": 45.2,
-        "AT": 12.3,
-        "CH": 8.7,
-        "US": 5.4,
-        "Other": 28.4
-      }
+      "brandMentions": ["brandname"]
+    }
+  ],
+  "next_cursor": "eyJwaXRJZCI6IkZHbHVZ...", // Use this for next request
+  "watermark": {
+    "created_at_max": "2025-01-15T10:30:00Z",
+    "last_id": "65abc123def456789"
+  },
+  "tokensDeducted": 1000,
+  "tokensRemaining": 99000
+}
+```
+
+*Legacy Response (Backward Compatible):*
+```json
+{
+  "content": [
+    {
+      "_id": "65abc123def456789",
+      // ... same content structure as above
     }
   ],
   "count": 15842,
@@ -680,6 +716,13 @@ GET https://app.infludata.com/api/externalAPI/getContent?offset=50&limit=50&view
 - Keywords field contains highlighted search terms when using keyword search
 - Collection-related fields are excluded for API users
 - All metrics and engagement data are included
+
+**Cursor-Based Pagination Fields:**
+- `items`: Array of content pieces (replaces `content` in cursor-based responses)
+- `next_cursor`: Opaque string to pass in the next request for pagination continuation
+- `watermark`: Object containing synchronization metadata
+  - `created_at_max`: Maximum creation timestamp in current page
+  - `last_id`: ID of the last item for deduplication in incremental syncs
 
 **Responses:**
 - **200**: Success, returns content array
@@ -1014,6 +1057,14 @@ Australia, Fiji, Kiribati, Marshall Islands, Micronesia, Nauru, New Zealand, Pal
 4. **Implement client-side caching** with metadata-driven cache invalidation
 5. **Consider time zones** for optimal API response times
 
+### Content Retrieval Best Practices
+1. **Use cursor-based pagination** for large data pulls (>1000 items)
+2. **Enable gzip compression** with Accept-Encoding header for faster transfers
+3. **Store watermarks** after full syncs for efficient incremental updates
+4. **Process data in streaming fashion** rather than loading all results in memory
+5. **Implement retry logic** with exponential backoff for transient failures
+6. **Use stable sort order** (uploaded + _doc) for consistent pagination
+
 ### Enrichment Strategy
 1. **Use bulk enrichment** for onboarding new creator lists
 2. **Enable weekly refresh** for creators in active campaigns
@@ -1268,6 +1319,96 @@ async function findHashtagUsers() {
 }
 ```
 
+### Content Discovery with Cursor-Based Pagination
+
+```javascript
+// Example: Retrieving 100,000 content pieces efficiently
+async function getAllContent(accessToken, filters = {}) {
+  const results = []
+  let cursor = null
+  let pageCount = 0
+  
+  do {
+    const params = new URLSearchParams({
+      accessToken,
+      limit: 1000, // Maximum items per page
+      platform: 'instagram,tiktok',
+      min_followers: 10000,
+      tags: 'fashion,style,outfit',
+      ...filters,
+      ...(cursor && { cursor })
+    })
+    
+    const response = await fetch(`https://app.infludata.com/api/externalAPI/getContent?${params}`, {
+      headers: { 
+        'Authorization': `Bearer ${accessToken}`,
+        'Accept-Encoding': 'gzip' // Enable compression
+      }
+    })
+    
+    const data = await response.json()
+    results.push(...data.items)
+    cursor = data.next_cursor
+    pageCount++
+    
+    console.log(`Page ${pageCount}: Retrieved ${data.items.length} items, Total: ${results.length}`)
+    
+    // Store watermark for incremental sync
+    if (!cursor && data.watermark) {
+      console.log('Sync complete. Watermark:', data.watermark)
+      // Save watermark for next incremental sync
+      saveWatermark(data.watermark)
+    }
+  } while (cursor)
+  
+  return results
+}
+
+// Example: Incremental sync using watermark
+async function getNewContent(accessToken, lastWatermark) {
+  const params = new URLSearchParams({
+    accessToken,
+    platform: 'instagram,tiktok',
+    min_followers: 10000,
+    tags: 'fashion,style',
+    created_at_gte: lastWatermark.created_at_max,
+    sorting: 'uploaded',
+    limit: 1000
+  })
+  
+  const results = []
+  let cursor = null
+  
+  do {
+    const response = await fetch(
+      `https://app.infludata.com/api/externalAPI/getContent?${params}${cursor ? '&cursor=' + cursor : ''}`,
+      { headers: { 'Authorization': `Bearer ${accessToken}` } }
+    )
+    
+    const data = await response.json()
+    
+    // Skip the first item if it matches our last seen ID (avoid duplicates)
+    if (results.length === 0 && data.items.length > 0 && data.items[0]._id === lastWatermark.last_id) {
+      data.items.shift()
+    }
+    
+    results.push(...data.items)
+    cursor = data.next_cursor
+  } while (cursor)
+  
+  return results
+}
+
+// Usage
+const allContent = await getAllContent('YOUR_TOKEN')
+console.log(`Retrieved ${allContent.length} total content pieces`)
+
+// Later, for incremental updates
+const savedWatermark = { created_at_max: '2025-01-15T10:30:00Z', last_id: 'abc123' }
+const newContent = await getNewContent('YOUR_TOKEN', savedWatermark)
+console.log(`Found ${newContent.length} new content pieces`)
+```
+
 ### Multi-platform Search
 
 ```javascript
@@ -1431,9 +1572,9 @@ For critical production issues or service outages:
 
 ---
 
-**Document Version**: 2.2  
-**Last Updated**: August 1st, 2025  
+**Document Version**: 2.3  
+**Last Updated**: August 12th, 2025  
 **API Version**: v1  
-**Effective Date**: March 21st, 2025
+**Effective Date**: August 12th, 2025
 
 *This documentation is proprietary and confidential. Distribution is restricted to authorized API clients only.*
