@@ -4,7 +4,7 @@
 
 ## 🆕 Recent Updates
 
-**January 2025 - Cursor-Based Pagination for Content Discovery:**
+**August 2025 - Cursor-Based Pagination for Content Discovery:**
 - **Efficient Large-Scale Data Retrieval**: New cursor-based pagination using Elasticsearch Point-in-Time (PIT) for consistent snapshots
 - **No Duplicates**: Stable sorting with search_after ensures no duplicate results during pagination
 - **Watermark Support**: Track incremental syncs with created_at_max and last_id for efficient delta updates
